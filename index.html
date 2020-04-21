@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Una peli para ti</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
+    <script>
+        onload = async function() {
+            const api = "https://api.themoviedb.org/3"
+            const api_key = "fd54ccf1ef3a6b27f6f0f62a20a5cc96"
+            const apiConfig = await getConfig()
+
+            function getConfig() {
+                return new Promise(function(resolve, reject) {
+                    var xhr = new XMLHttpRequest()
+                    xhr.onload = function() {
+                        var res = JSON.parse(xhr.responseText)
+                        resolve(res['images'])
+                    }
+                    xhr.open("GET", `${api}/configuration?api_key=${api_key}`)
+                    xhr.send()
+                })
+            }
+
+            function getDirector(id) {
+                return new Promise(function(resolve, reject) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.onload = function() {
+                        var res = JSON.parse(xhr.responseText)
+                        for (var i = 0; i < res['crew'].length; i++) {
+                            if (res['crew'][i]['job'] == 'Director') {
+                                var director = res['crew'][i]['name']
+                                break
+                            }
+                        }
+                        resolve(director)
+                    }
+                    xhr.open("GET", `${api}/movie/${id}/credits?api_key=${api_key}&language=es-ES`)
+                    xhr.send()
+                })
+            }
+
+            function getGenres(list) {
+                var genres = []
+                for (var i = 0; i < list.length; i++) {
+                    genres.push(list[i]['name'])
+                }
+                return genres
+            }
+
+            function getDetail(id) {
+                return new Promise(function(resolve, reject) {
+                    var xhr = new XMLHttpRequest();
+                    xhr.onload = async function() {
+                        var detail = new Object()
+                        var res = JSON.parse(xhr.responseText)
+                        detail.director = await getDirector(id)
+                        detail.year = res['release_date'].split('-')[0]
+                        detail.url = res['homepage']
+                        detail.genres = getGenres(res['genres']).join(', ')
+                        resolve(detail)
+                    }
+                    xhr.open("GET", `${api}/movie/${id}?api_key=${api_key}&language=es-ES`)
+                    xhr.send()
+                })
+            }
+
+            function getFilm() {
+                return new Promise(function(resolve, reject) {
+                    var film = new Object()
+                    var xhr = new XMLHttpRequest();
+                    xhr.onload = async function() {
+                        var res = JSON.parse(xhr.responseText)['results'][Math.floor(Math.random() * 10)]
+                        film.title = res.title
+                        film.img = apiConfig['secure_base_url'] + apiConfig['poster_sizes'][2] + res.poster_path
+                        film.synopsis = res.overview
+                        film.detail = await getDetail(res['id'])
+                        resolve(film)
+                    }
+                    xhr.open("GET", `${api}/discover/movie?api_key=${api_key}&language=es-ES&page=${Math.floor(Math.random() * 10)}`)
+                    xhr.send()
+                })
+            }
+            var film = await getFilm()
+            var container = document.getElementById("container")
+            container.removeChild(document.getElementById("loading"))
+            var card = document.createElement("div")
+            card.setAttribute("class", "card weather-card")
+            card.setAttribute("style", "width: 18rem;")
+            var card_body = document.createElement("div")
+            card_body.setAttribute("class", "card-body pb-3")
+            var title = document.createElement("h4")
+            title.setAttribute("class", "card-title font-weight-bold")
+            title.innerHTML = film.title
+            card_body.appendChild(title)
+            var dl = document.createElement("dl")
+            var director = document.createElement("dt")
+            director.setAttribute("class", "card-text")
+            director.innerHTML = film.detail.director
+            dl.appendChild(director)
+            var year = document.createElement("dd")
+            year.setAttribute("class", "card-text")
+            year.innerHTML = film.detail.year
+            dl.appendChild(year)
+            card_body.appendChild(dl)
+            var img = document.createElement("img")
+            img.setAttribute("class", "img-thumbnail")
+            img.setAttribute("src", film.img)
+            card_body.appendChild(img)
+            var genres = document.createElement("p")
+            genres.setAttribute("class", "blockquote-footer")
+            genres.innerHTML = film.detail.genres
+            card_body.appendChild(genres)
+            card.appendChild(card_body)
+            var collapse_content = document.createElement("div")
+            collapse_content.setAttribute("class", "collapse-content")
+            var content = document.createElement("div")
+            content.setAttribute("class", "collapse")
+            content.setAttribute("id", "collapseExample")
+            var synopsis = document.createElement("div")
+            synopsis.setAttribute("class", "card-body")
+            synopsis.innerHTML = film.synopsis
+            content.appendChild(synopsis)
+            var url = document.createElement("a")
+            url.setAttribute("class", "card-body")
+            url.setAttribute("href", film.detail.url)
+            url.innerHTML = "Ver más"
+            content.appendChild(url)
+            collapse_content.appendChild(content)
+            var hr = document.createElement("hr")
+            collapse_content.appendChild(hr)
+            var expand = document.createElement("p")
+            expand.setAttribute("class", "card-text")
+            var button = document.createElement("button")
+            button.setAttribute("class", "btn btn-link")
+            button.setAttribute("data-toggle", "collapse")
+            button.setAttribute("data-target", "#collapseExample")
+            button.setAttribute("aria-expanded", "true")
+            button.setAttribute("aria-controls", "collapseExample")
+            button.innerHTML = "SINOPSIS"
+            expand.appendChild(button)
+            collapse_content.appendChild(expand)
+            card.appendChild(collapse_content)
+            container.insertBefore(card, document.getElementById("footer"))
+        }
+    </script>
+</head>
+
+<body>
+    <div class="container p-3" id="container">
+        <h1 id="header">Te recomiendo...</h1>
+        <div class="spinner-grow m-5" role="status" id="loading">
+            <span class="sr-only">Loading...</span>
+        </div>
+        <p id="footer">Powered by <i>https://www.themoviedb.org/</i></p>
+    </div>
+    <!-- Card -->
+    <script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+</body>
+
+</html>
