@@ -1,0 +1,12 @@
+image: alpine:latest
+
+deployment:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "master"
+  script:
+    - apk add git
+    - git config credential.helper 'cache --timeout=120'
+    - git config user.email $(git log | grep Author | head -n 1 | cut -d "<" -f2 | cut -d ">" -f1)
+    - git config user.name $(git log | grep Author | head -n 1 | cut -d "<" -f2 | cut -d ">" -f1 | cut -d "@" -f1)
+    - git checkout master
+    - git push --force -q https://$GITHUB_USER:$GIT_TOKEN@github.com/cuarentena-espana/pelicula.git master
